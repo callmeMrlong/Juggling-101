@@ -10,6 +10,19 @@ clock = pygame.time.Clock()
 font = pygame.font.SysFont("Arial", 24, bold=True)
 countdown_font = pygame.font.SysFont("Arial", 72, bold=True)
 streak_font = pygame.font.SysFont("Arial", 48, bold=True)
+held_ball_font = pygame.font.SysFont("Arial", 16, bold=True)
+
+# Load hand textures
+try:
+    left_hand_img = pygame.image.load("textures/left.png")
+    right_hand_img = pygame.image.load("textures/right.png")
+    # Scale hands to fit nicely in corners
+    left_hand_img = pygame.transform.scale(left_hand_img, (120, 120))
+    right_hand_img = pygame.transform.scale(right_hand_img, (120, 120))
+except pygame.error as e:
+    print(f"Error loading hand textures: {e}")
+    left_hand_img = None
+    right_hand_img = None
 
 # Ball Visual Data (Positions and Colors)
 balls_gui = {
@@ -42,9 +55,15 @@ running = True
 while running:
     screen.fill((30, 30, 30))
 
+    # --- DRAW HAND TEXTURES ---
+    if left_hand_img:
+        screen.blit(left_hand_img, (10, HEIGHT - 130))
+    if right_hand_img:
+        screen.blit(right_hand_img, (WIDTH - 130, HEIGHT - 130))
+
     # --- DRAW BALLS GUI ---
     for label, info in balls_gui.items():
-        # Draw the ball (radius 70)
+        # Draw the ball normally (radius 70) at its default position
         pygame.draw.circle(screen, info["color"], info["pos"], 70)
 
         # Draw countdown if active
@@ -57,6 +76,34 @@ while running:
         text_surface = font.render(label, True, (255, 255, 255))
         text_rect = text_surface.get_rect(center=(info["pos"][0], info["pos"][1] - 85))
         screen.blit(text_surface, text_rect)
+
+    # --- DRAW HELD BALLS IN HANDS ---
+    for hand, balls_dict in hands.items():
+        held_balls = [ball for ball, state in balls_dict.items() if state == "in_hand"]
+
+        if held_balls:
+            # Determine hand position
+            if hand == "Q":  # Left hand
+                base_x, base_y = 60, HEIGHT - 70
+            else:  # Right hand (E)
+                base_x, base_y = WIDTH - 60, HEIGHT - 70
+
+            # Add offsets for multiple balls in same hand
+            for idx, ball in enumerate(held_balls):
+                offset_x = idx * 30 - (len(held_balls) - 1) * 15  # Center the group
+                offset_y = idx * 20
+                held_pos = (base_x + offset_x, base_y + offset_y)
+
+                ball_info = balls_gui[ball]
+                held_ball_radius = 20
+
+                # Draw the smaller held ball
+                pygame.draw.circle(screen, ball_info["color"], held_pos, held_ball_radius)
+
+                # Draw the letter inside the held ball
+                letter_surface = held_ball_font.render(ball, True, (255, 255, 255))
+                letter_rect = letter_surface.get_rect(center=held_pos)
+                screen.blit(letter_surface, letter_rect)
 
     # Draw streak counter at top of screen
     streak_text = streak_font.render(f"Streak: {streak}", True, (255, 215, 0))
