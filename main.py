@@ -33,14 +33,14 @@ balls_gui = {
 
 # Ball state tracking for countdowns
 ball_countdowns = {
-    "A": {"countdown": 0, "max_countdown": 0},
-    "S": {"countdown": 0, "max_countdown": 0},
-    "D": {"countdown": 0, "max_countdown": 0}
+    "A": {"countdown": 0, "max_countdown": 0, "landing_hand": None},
+    "S": {"countdown": 0, "max_countdown": 0, "landing_hand": None},
+    "D": {"countdown": 0, "max_countdown": 0, "landing_hand": None}
 }
 
 # VARS
 current_ball = None
-current_hand = None
+target_hand = None
 height_diff = ""  # W (up), X (down), or empty
 throw_type = ""  # Z (inside), C (outside)
 sequence = []
@@ -82,7 +82,7 @@ while running:
         held_balls = [ball for ball, state in balls_dict.items() if state == "in_hand"]
 
         if held_balls:
-            # Determine hand position
+            # Determine hand position: Q is Left, E is Right
             if hand == "Q":  # Left hand
                 base_x, base_y = 60, HEIGHT - 70
             else:  # Right hand (E)
@@ -110,10 +110,27 @@ while running:
     streak_rect = streak_text.get_rect(center=(WIDTH // 2, 30))
     screen.blit(streak_text, streak_rect)
 
-    # Update countdowns
+    # Update countdowns and handle ball landing
     for ball in ball_countdowns:
         if ball_countdowns[ball]["countdown"] > 0:
             ball_countdowns[ball]["countdown"] -= 1 / 60  # Decrease by frame time (assuming 60 FPS)
+
+            # If countdown just finished, move ball to landing hand
+            if ball_countdowns[ball]["countdown"] <= 0 and ball_countdowns[ball]["landing_hand"] is not None:
+                landing_hand = ball_countdowns[ball]["landing_hand"]
+                # Remove ball from all hands first
+                for hand in hands:
+                    if ball in hands[hand]:
+                        hands[hand][ball] = "in_air"
+                # Add ball to landing hand
+                hands[landing_hand][ball] = "in_hand"
+                ball_countdowns[ball]["landing_hand"] = None
+
+                # Check streak condition after ball lands
+                total_held = sum(1 for h in hands for b in hands[h] if hands[h][b] == "in_hand")
+                if total_held >= 2:
+                    streak = 0
+                    print(f"Streak broken! 2 or more balls held.")
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -123,22 +140,24 @@ while running:
             # 1. Declare Ball: A, S, D
             if event.key in [pygame.K_a, pygame.K_s, pygame.K_d]:
                 current_ball = pygame.key.name(event.key).upper()
+                print(f"Selected ball: {current_ball}")
 
-            # 2. Declare Hand: Q (Left), E (Right)
+            # 2. Declare Target Hand: Q (Left), E (Right) - where the ball will be thrown TO
             elif event.key in [pygame.K_q, pygame.K_e] and current_ball:
-                current_hand = pygame.key.name(event.key).upper()
+                target_hand = pygame.key.name(event.key).upper()
+                print(f"Target hand: {target_hand}")
 
             # 3. Change Height (Optional): W (up), X (down) - Multi-press allowed
-            elif event.key == pygame.K_w and current_hand:
+            elif event.key == pygame.K_w and target_hand:
                 height_modifier += 1
                 print(f"Height increased! Current modifier: {height_modifier:+d}")
 
-            elif event.key == pygame.K_x and current_hand:
+            elif event.key == pygame.K_x and target_hand:
                 height_modifier -= 1
                 print(f"Height decreased! Current modifier: {height_modifier:+d}")
 
             # 4. Throw Type (Finish sequence): Z (Inside), C (Outside)
-            elif event.key in [pygame.K_z, pygame.K_c] and current_hand:
+            elif event.key in [pygame.K_z, pygame.K_c] and target_hand:
                 throw_type = pygame.key.name(event.key).upper()
 
                 # Format height output: display empty if 0, otherwise show the total count (e.g., WW or XX)
@@ -150,32 +169,38 @@ while running:
                     height_str = ""
 
                 # Complete the sequence string
-                move = f"{current_ball}{current_hand}{height_str}{throw_type}"
+                move = f"{current_ball}{target_hand}{height_str}{throw_type}"
                 sequence.append(move)
-                print(sequence)
+                print(f"Sequence: {sequence}")
+
+                # The landing hand is the target hand specified in the sequence
+                landing_hand = target_hand
 
                 # Set countdown for the thrown ball based on height modifier
                 # Base countdown of 1 second, plus 0.5 seconds per height level
                 countdown_duration = 1.0 + (abs(height_modifier) * 0.5)
                 ball_countdowns[current_ball]["countdown"] = countdown_duration
                 ball_countdowns[current_ball]["max_countdown"] = countdown_duration
+                ball_countdowns[current_ball]["landing_hand"] = landing_hand
 
-                # Check streak: count how many balls are currently in the air (countdown > 0)
-                balls_in_air = sum(1 for ball in ball_countdowns if ball_countdowns[ball]["countdown"] > 0)
+                # Remove ball from all hands (throw it)
+                for hand in hands:
+                    if current_ball in hands[hand]:
+                        hands[hand][current_ball] = "in_air"
 
-                # If at least 2 balls are in the air, increment streak
-                if balls_in_air >= 2:
-                    streak += 1
-                    print(f"Streak increased to {streak}!")
-                else:
-                    # Reset streak if fewer than 2 balls in the air
-                    if streak > 0:
-                        print(f"Streak broken! Final streak: {streak}")
+                # Increment streak by 1 for this sequence
+                streak += 1
+                print(f"Sequence completed! Streak: {streak}")
+
+                # Check if 2 or more balls are held
+                total_held = sum(1 for h in hands for b in hands[h] if hands[h][b] == "in_hand")
+                if total_held >= 2:
                     streak = 0
+                    print(f"Streak broken! 2 or more balls held.")
 
                 # Reset for next throw
                 current_ball = None
-                current_hand = None
+                target_hand = None
                 height_diff = ""
                 throw_type = ""
                 height_modifier = 0
