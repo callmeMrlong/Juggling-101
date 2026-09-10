@@ -37,13 +37,14 @@ while running:
 
     # --- DRAW BALLS GUI ---
   for label, info in balls_gui.items():
-        # Draw the ball
-        pygame.draw.circle(screen, info["color"], info["pos"], 25)
+        # Draw the ball (increased radius from 25 to 40)
+        pygame.draw.circle(screen, info["color"], info["pos"], 40)
 
-        # Render and draw the text label centered on the ball
+        # Render and draw the text label above the ball
         text_surface = font.render(label, True, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=info["pos"])
-  screen.blit(text_surface, text_rect)
+        text_rect = text_surface.get_rect(center=(info["pos"][0], info["pos"][1] - 55))
+        screen.blit(text_surface, text_rect)
+
   for event in pygame.event.get():
     if event.type == pygame.QUIT:
       running = False
@@ -79,7 +80,7 @@ while running:
             height_str = ""
 
         # Complete the sequence string
-        move = f"{current_ball}{current_hand}{height_diff}{throw_type}"
+        move = f"{current_ball}{current_hand}{height_str}{throw_type}"
         sequence.append(move)
         print(sequence)
 
