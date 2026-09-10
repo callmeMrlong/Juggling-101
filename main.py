@@ -8,6 +8,7 @@ clock = pygame.time.Clock()
 
 # Initialize Font for Labels
 font = pygame.font.SysFont("Arial", 24, bold=True)
+countdown_font = pygame.font.SysFont("Arial", 48, bold=True)
 
 # Ball Visual Data (Positions and Colors)
 balls_gui = {
@@ -16,6 +17,12 @@ balls_gui = {
     "D": {"pos": (500, 150), "color": (67, 97, 238)}     # Blue Ball
 }
 
+# Ball state tracking for countdowns
+ball_countdowns = {
+    "A": {"countdown": 0, "max_countdown": 0},
+    "S": {"countdown": 0, "max_countdown": 0},
+    "D": {"countdown": 0, "max_countdown": 0}
+}
 
 #VARS
 current_ball = None
@@ -40,10 +47,21 @@ while running:
         # Draw the ball (increased radius from 25 to 40)
         pygame.draw.circle(screen, info["color"], info["pos"], 40)
 
+        # Draw countdown if active
+        if ball_countdowns[label]["countdown"] > 0:
+            countdown_text = countdown_font.render(str(ball_countdowns[label]["countdown"]), True, (255, 255, 255))
+            countdown_rect = countdown_text.get_rect(center=info["pos"])
+            screen.blit(countdown_text, countdown_rect)
+
         # Render and draw the text label above the ball
         text_surface = font.render(label, True, (255, 255, 255))
         text_rect = text_surface.get_rect(center=(info["pos"][0], info["pos"][1] - 55))
         screen.blit(text_surface, text_rect)
+
+  # Update countdowns
+  for ball in ball_countdowns:
+    if ball_countdowns[ball]["countdown"] > 0:
+      ball_countdowns[ball]["countdown"] -= 1 / 60  # Decrease by frame time (assuming 60 FPS)
 
   for event in pygame.event.get():
     if event.type == pygame.QUIT:
@@ -84,6 +102,11 @@ while running:
         sequence.append(move)
         print(sequence)
 
+        # Set countdown for the thrown ball based on height modifier
+        # Base countdown of 1 second, plus 0.5 seconds per height level
+        countdown_duration = 1.0 + (abs(height_modifier) * 0.5)
+        ball_countdowns[current_ball]["countdown"] = countdown_duration
+        ball_countdowns[current_ball]["max_countdown"] = countdown_duration
 
         # Reset for next throw
         current_ball = None
