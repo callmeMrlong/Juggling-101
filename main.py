@@ -48,6 +48,7 @@ throw_type = ""  # Z (inside), C (outside)
 sequence = []
 height_modifier = 0
 streak = 0
+had_balls_in_air = False  # Track if we ever had balls in air
 
 # Settings
 show_settings = True
@@ -138,23 +139,34 @@ def draw_settings_menu():
     return left_input_rect, right_input_rect, left_minus_rect, left_plus_rect, right_minus_rect, right_plus_rect, checkbox_rect, start_button_rect
 
 def check_juggling_failed():
-    """Check if juggle has failed (a ball is in air and no balls are held)"""
+    """Check if juggle has failed - detect when balls that were in air are now all caught or on ground"""
+    global had_balls_in_air
     balls_in_air = sum(1 for ball in ball_countdowns if ball_countdowns[ball]["countdown"] > 0)
-    balls_held = sum(1 for h in hands for b in hands[h] if hands[h][b] == "in_hand")
     
-    # Failed if there were balls in air but now none are held and none are in air
-    if balls_in_air == 0 and balls_held == 0 and len(sequence) > 0:
-        return True
+    # If we had balls in air and now none are in air, check if all caught
+    if had_balls_in_air and balls_in_air == 0 and len(sequence) > 0:
+        # Count total balls (held or in_air state)
+        total_balls_held = sum(1 for h in hands for b in hands[h] if hands[h][b] == "in_hand")
+        # If all 3 balls are caught, trigger animation
+        if total_balls_held == 3:
+            had_balls_in_air = False
+            return True
+    
+    # Update tracking
+    if balls_in_air > 0:
+        had_balls_in_air = True
+    
     return False
 
 def reset_game():
     """Reset game state for retry"""
-    global current_ball, target_hand, height_modifier, streak
+    global current_ball, target_hand, height_modifier, streak, had_balls_in_air
     global ball_countdowns, hands, sequence, showing_animation
     
     current_ball = None
     target_hand = None
     height_modifier = 0
+    had_balls_in_air = False
     
     # Reset ball countdowns
     for ball in ball_countdowns:
@@ -322,7 +334,7 @@ while running:
                             print(f"Streak broken! 2 or more balls held.")
 
             # Check if juggle failed
-            if check_juggling_failed() and len(sequence) > 0:
+            if check_juggling_failed():
                 print(f"Juggle failed! Sequence was: {sequence}")
                 # Start animation
                 animator.start_animation(sequence.copy(), base_hand_power)
