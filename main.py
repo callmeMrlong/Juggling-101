@@ -52,6 +52,7 @@ streak = 0
 show_settings = True
 require_throw_type = True
 hand_power = {"Q": 0.0, "E": 0.0}
+base_hand_power = {"Q": 0.0, "E": 0.0}  # Stores base power throughout the game
 editing_hand = None  # "Q" or "E" for which hand power is being edited
 power_input = ""
 
@@ -173,6 +174,9 @@ while running:
                     require_throw_type = not require_throw_type
                 # Start button
                 elif start_button_rect.collidepoint(mouse_pos):
+                    # Store the base power values for the entire game
+                    base_hand_power["Q"] = hand_power["Q"]
+                    base_hand_power["E"] = hand_power["E"]
                     show_settings = False
                     editing_hand = None
             elif event.type == pygame.KEYDOWN:
@@ -310,9 +314,9 @@ while running:
                             # The landing hand is the target hand specified in the sequence
                             landing_hand = target_hand
 
-                            # Set countdown for the thrown ball based on height modifier
-                            # Base countdown of 1 second, plus 0.5 seconds per height level
-                            countdown_duration = 1.0 + (abs(height_modifier) * 0.5)
+                            # Set countdown for the thrown ball based on height modifier and base power
+                            # Base countdown = base_power + (1.0 + 0.5 * height_modifier)
+                            countdown_duration = base_hand_power[target_hand] + 1.0 + (abs(height_modifier) * 0.5)
                             ball_countdowns[current_ball]["countdown"] = countdown_duration
                             ball_countdowns[current_ball]["max_countdown"] = countdown_duration
                             ball_countdowns[current_ball]["landing_hand"] = landing_hand
@@ -378,9 +382,9 @@ while running:
                         # The landing hand is the target hand specified in the sequence
                         landing_hand = target_hand
 
-                        # Set countdown for the thrown ball based on height modifier
-                        # Base countdown of 1 second, plus 0.5 seconds per height level
-                        countdown_duration = 1.0 + (abs(height_modifier) * 0.5)
+                        # Set countdown for the thrown ball based on height modifier and base power
+                        # Base countdown = base_power + (1.0 + 0.5 * height_modifier)
+                        countdown_duration = base_hand_power[target_hand] + 1.0 + (abs(height_modifier) * 0.5)
                         ball_countdowns[current_ball]["countdown"] = countdown_duration
                         ball_countdowns[current_ball]["max_countdown"] = countdown_duration
                         ball_countdowns[current_ball]["landing_hand"] = landing_hand
